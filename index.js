@@ -1,5 +1,5 @@
 const express = require('express');
-const cors =require('cors');
+const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, Timestamp } = require('mongodb');
 require('dotenv').config();
@@ -8,11 +8,11 @@ const port = process.env.PORT || 5000
 
 
 app.use(cors({
-    origin:[
-        'http://localhost:5173',
-        'http://localhost:5174',
-    ],
-    credentials: true
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174',
+  ],
+  credentials: true
 }))
 
 app.use(express.json());
@@ -37,9 +37,9 @@ async function run() {
     const userCollection = client.db("shopFusion").collection("users")
     const reviewsCollection = client.db("shopFusion").collection("reviews")
     const paymentCollection = client.db("shopFusion").collection("payment")
-    
-     // auth related api
-     app.post('/jwt', async (req, res) => {
+
+    // auth related api
+    app.post('/jwt', async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCRSS_TOKEN_SECRET, { expiresIn: '1h' })
       res.send({ token })
@@ -62,32 +62,38 @@ async function run() {
       })
     }
 
-// ...............................users...................................
-app.put('/user',async (req,res)=>{
-const user= req.body
-const query = {email:user?.email}
-const isExist = await userCollection.findOne(query)
-if(isExist){
-  if(user.status === 'Requested'){
-    const result = await userCollection.updateOne(query,{
-      $set:{status:user?.status}
+    // ...............................users...................................
+    app.put('/user', async (req, res) => {
+      const user = req.body
+      const query = { email: user?.email }
+      const isExist = await userCollection.findOne(query)
+      if (isExist) {
+        if (user.status === 'Requested') {
+          const result = await userCollection.updateOne(query, {
+            $set: { status: user?.status }
+          })
+          return res.send(result)
+        } else {
+          return res.send(isExist)
+        }
+      }
+      const options = { upsert: true }
+      const updateDoc = {
+        $set: {
+          ...user, Timestamp: Date.now()
+        }
+      }
+      const result = await userCollection.updateOne(query, updateDoc, options)
+      res.send(result)
     })
-    return res.send(result)
-  }else{
-    return res.send(isExist)
-  }
-}
-const options = {upsert:true}
-const updateDoc={
-  $set:{
-    ...user, Timestamp:Date.now()
-  }
-}
-const result = await userCollection.updateOne(query,updateDoc,options)
-res.send(result)
-})
 
-    
+    app.get('/user/:email',async (req,res)=>{
+      const email = req.params.email
+      const result = await userCollection.findOne({email})
+      res.send(result)
+    })
+
+
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
