@@ -1,5 +1,6 @@
 const express = require('express');
 const cors =require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config();
 const app = express()
@@ -36,6 +37,33 @@ async function run() {
     const userCollection = client.db("shopFusion").collection("users")
     const reviewsCollection = client.db("shopFusion").collection("reviews")
     const paymentCollection = client.db("shopFusion").collection("payment")
+    
+     // auth related api
+     app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCRSS_TOKEN_SECRET, { expiresIn: '1h' })
+      res.send({ token })
+    })
+    // middlewares 
+
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'unauthorized access,1' });
+      }
+      const data = req.headers.authorization.split(' ');
+      const token = data[1]
+      jwt.verify(token, process.env.ACCRSS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: 'unauthorized access ,2' })
+        }
+        req.decoded = decoded;
+
+        next();
+      })
+    }
+
+
+    
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
