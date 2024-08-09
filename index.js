@@ -1,7 +1,7 @@
 const express = require('express');
 const cors =require('cors');
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, Timestamp } = require('mongodb');
 require('dotenv').config();
 const app = express()
 const port = process.env.PORT || 5000
@@ -62,6 +62,30 @@ async function run() {
       })
     }
 
+// ...............................users...................................
+app.put('/user',async (req,res)=>{
+const user= req.body
+const query = {email:user?.email}
+const isExist = await userCollection.findOne(query)
+if(isExist){
+  if(user.status === 'Requested'){
+    const result = await userCollection.updateOne(query,{
+      $set:{status:user?.status}
+    })
+    return res.send(result)
+  }else{
+    return res.send(isExist)
+  }
+}
+const options = {upsert:true}
+const updateDoc={
+  $set:{
+    ...user, Timestamp:Date.now()
+  }
+}
+const result = await userCollection.updateOne(query,updateDoc,options)
+res.send(result)
+})
 
     
     await client.db("admin").command({ ping: 1 });
