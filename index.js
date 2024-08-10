@@ -1,7 +1,7 @@
 const express = require('express');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion, Timestamp } = require('mongodb');
 require('dotenv').config();
 const app = express()
 const port = process.env.PORT || 5000
@@ -35,8 +35,8 @@ async function run() {
     // await client.connect();
     const productCollection = client.db("shopFusion").collection("product")
     const userCollection = client.db("shopFusion").collection("users")
-    const reviewsCollection = client.db("shopFusion").collection("reviews")
-    const paymentCollection = client.db("shopFusion").collection("payment")
+    // const reviewsCollection = client.db("shopFusion").collection("reviews")
+    // const paymentCollection = client.db("shopFusion").collection("payment")
 
     // auth related api
     app.post('/jwt', async (req, res) => {
@@ -44,57 +44,132 @@ async function run() {
       const token = jwt.sign(user, process.env.ACCRSS_TOKEN_SECRET, { expiresIn: '1h' })
       res.send({ token })
     })
+  // Logout
+  app.post('/logout', async (req, res) => {
+      const user = req.body;
+      res.clearCookie('token', { maxAge: 0 }).send({ success: true })
+    })
     // middlewares 
 
-    const verifyToken = (req, res, next) => {
-      if (!req.headers.authorization) {
-        return res.status(401).send({ message: 'unauthorized access,1' });
-      }
-      const data = req.headers.authorization.split(' ');
-      const token = data[1]
-      jwt.verify(token, process.env.ACCRSS_TOKEN_SECRET, (err, decoded) => {
-        if (err) {
-          return res.status(401).send({ message: 'unauthorized access ,2' })
-        }
-        req.decoded = decoded;
+    // const verifyToken = (req, res, next) => {
+    //   if (!req.headers.authorization) {
+    //     return res.status(401).send({ message: 'unauthorized access,1' });
+    //   }
+    //   const data = req.headers.authorization.split(' ');
+    //   const token = data[1]
+    //   jwt.verify(token, process.env.ACCRSS_TOKEN_SECRET, (err, decoded) => {
+    //     if (err) {
+    //       return res.status(401).send({ message: 'unauthorized access ,2' })
+    //     }
+    //     req.decoded = decoded;
 
-        next();
+    //     next();
+    //   })
+    // }
+
+// .............................
+app.get('/product', async (req, res) => {
+  const result = await productCollection.find().toArray();
+  res.send(result)
+})
+app.get('/product/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: new ObjectId(id) }
+  const result = await productCollection.findOne(query)
+  res.send(result);
+})
+app.post('/product', async (req, res) => {
+  const product = req.body;
+  const result = await productCollection.insertOne(product)
+  res.send(result);
+})
+
+
+       // ...............................users...................................
+
+       app.put('/user', async (req, res) => {
+        const user = req.body
+        const query = { email: user?.email }
+        const isExist = await userCollection.findOne(query)
+        if (isExist) {
+          if (user.status === 'Requested') {
+            const result = await userCollection.updateOne(query, {
+              $set: { status: user?.status },
+            })
+            return res.send(result)
+          } else {
+            return res.send(isExist)
+          }
+        }
+  
+        const options = { upsert: true }
+  
+        const updateDoc = {
+          $set: {
+            ...user,
+            Timestamp: Date.now(),
+          },
+        }
+        const result = await userCollection.updateOne(query, updateDoc, options)
+        res.send(result)
       })
-    }
-
-    // ...............................users...................................
-    app.put('/user', async (req, res) => {
-      const user = req.body
-      const query = { email: user?.email }
-      const isExist = await userCollection.findOne(query)
-      if (isExist) {
-        if (user.status === 'Requested') {
-          const result = await userCollection.updateOne(query, {
-            $set: { status: user?.status }
-          })
-          return res.send(result)
-        } else {
-          return res.send(isExist)
+      app.get('/users', async (req, res) => {
+        const result = await userCollection.find().toArray()
+        res.send(result)
+      })
+      app.get('/user/:email', async (req, res) => {
+        const email = req.params.email
+        const result = await userCollection.findOne({ email })
+        res.send(result)
+      })
+      
+      // .............................................
+      app.get('/filteruser', async (req, res) => {
+        const filter = req.query.filter
+        const sort = req.query.sort
+        let query ={}
+        if (filter) query.role = filter
+        let options = {}
+        if (sort) options = { sort: { Timestamp: sort === 'asc' ? 1 : -1 } }
+        const result = await userCollection.find(query, options).toArray()
+        res.send(result)
+      })
+  
+      // ...........................
+   
+      app.patch('/users/:email', async (req, res) => {
+        const email = req.params.email
+        const user = req.body
+        const query = { email }
+        const updateDoc = {
+          $set: { ...user, Timestamp: Date.now() },
         }
-      }
-      const options = { upsert: true }
-      const updateDoc = {
-        $set: {
-          ...user, Timestamp: Date.now()
+        const result = await userCollection.updateOne(query, updateDoc)
+        res.send(result)
+      })
+  
+  
+      app.patch('/users/update/:email', async (req, res) => {
+        const email = req.params.email
+        const user = req.body
+        const query = { email }
+        const updateDoc = {
+          $set: { ...user, Timestamp: Date.now() },
+  
         }
-      }
-      const result = await userCollection.updateOne(query, updateDoc, options)
-      res.send(result)
-    })
+        const result = await userCollection.updateOne(query, updateDoc)
+        res.send(result)
+      })
 
-    app.get('/user/:email',async (req,res)=>{
-      const email = req.params.email
-      const result = await userCollection.findOne({email})
-      res.send(result)
-    })
+      app.delete('/users/:id', async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) }
+        const result = await userCollection.deleteOne(query);
+        res.send(result);
+      })
 
 
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
