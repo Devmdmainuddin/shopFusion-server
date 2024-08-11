@@ -36,7 +36,7 @@ async function run() {
     const productCollection = client.db("shopFusion").collection("product")
     const userCollection = client.db("shopFusion").collection("users")
     // const reviewsCollection = client.db("shopFusion").collection("reviews")
-    // const paymentCollection = client.db("shopFusion").collection("payment")
+    const cartCollection = client.db("shopFusion").collection("cart")
 
     // auth related api
     app.post('/jwt', async (req, res) => {
@@ -66,6 +66,23 @@ async function run() {
     //     next();
     //   })
     // }
+//..........................
+app.get('/cart', async (req, res) => {
+  const result = await cartCollection.find().toArray();
+  res.send(result)
+})
+app.post('/cart', async (req, res) => {
+  const cartItem = req.body;
+  const result = await cartCollection.insertOne(cartItem)
+  res.send(result);
+})
+app.delete('/cart/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: new ObjectId(id) }
+  const result = await cartCollection.deleteOne(query)
+  res.send(result);
+
+})
 
 // .............................
 app.get('/product', async (req, res) => {
