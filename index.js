@@ -37,6 +37,7 @@ async function run() {
     const userCollection = client.db("shopFusion").collection("users")
     const wishlistCollection = client.db("shopFusion").collection("wishlist")
     const cartCollection = client.db("shopFusion").collection("cart")
+    const commentCollection = client.db("shopFusion").collection("comment")
 
     // auth related api
     app.post('/jwt', async (req, res) => {
@@ -66,14 +67,25 @@ async function run() {
     //     next();
     //   })
     // }
-    // .............
+    // ..........................wishlist......................
+    app.get('/wishlist', async (req, res) => {
+      const result = await wishlistCollection.find().toArray();
+      res.send(result)
+    })
+
     app.post('/wishlist', async (req, res) => {
       const cartItem = req.body;
       const result = await wishlistCollection.insertOne(cartItem)
       res.send(result);
     })
+    app.delete('/wishlist/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await wishlistCollection.deleteOne(query)
+      res.send(result);
 
-    //..........................
+    })
+    //..............................cart...........................
     app.get('/cart', async (req, res) => {
       const result = await cartCollection.find().toArray();
       res.send(result)
@@ -91,7 +103,7 @@ async function run() {
 
     })
 
-    // .............................
+    // .............................product.............................
     app.get('/product', async (req, res) => {
       const result = await productCollection.find().toArray();
       res.send(result)
@@ -107,6 +119,26 @@ async function run() {
       const result = await productCollection.insertOne(product)
       res.send(result);
     })
+// ................comment...........................
+
+// ....................................................
+app.get('/comment', async (req, res) => {
+  const result = await commentCollection.find().toArray();
+  res.send(result)
+})
+app.post('/comment', async (req, res) => {
+  const querie = req.body;
+  const result = await commentCollection.insertOne(querie)
+  res.send(result);
+})
+
+app.delete('/comment/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: new ObjectId(id) }
+  const result = await commentCollection.deleteOne(query)
+  res.send(result);
+ 
+})
 
 
     // ...............................users...................................
