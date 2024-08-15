@@ -87,14 +87,57 @@ async function run() {
     })
     //..............................cart...........................
     app.get('/cart', async (req, res) => {
-      const result = await cartCollection.find().toArray();
+      // const email = req.params.email
+      let query = {};
+
+      if (req.query?.email) {
+        query = { "email": req.query.email }
+
+      }
+      const result = await cartCollection.find(query).toArray();
+      // const result = await cartCollection.findOne({ email })
       res.send(result)
     })
+
+    // app.get('/user/:email', async (req, res) => {
+    //   const email = req.params.email
+    //   const result = await userCollection.findOne({ email })
+    //   res.send(result)
+    // })
+
     app.post('/cart', async (req, res) => {
-      const cartItem = req.body;
+      const cartItem = req.body
       const result = await cartCollection.insertOne(cartItem)
       res.send(result);
     })
+    // app.put('/cart', async (req, res) => {
+    //   const cartItem = req.body
+    //   const query = { produdctId: cartItem?.produdctId }
+    //   const isExist = await cartCollection.findOne(query)
+    //   if (isExist) {
+    //     if (cartItem.itemQuantity >1 ) {
+    //     //  const updateQuantity= itemQuantity +1
+    //       const result = await cartCollection.updateOne(query, {
+    //         $set: { itemQuantity:  itemQuantity + parseInt(cartItem.itemQuantity) },
+    //       })
+    //       return res.send(result)
+    //     } else {
+    //       return res.send(isExist)
+    //     }
+    //   }
+
+    //   const options = { upsert: true }
+
+    //   const updateDoc = {
+    //     $set: {
+    //       ...cartItem,
+    //       Timestamp: Date.now(),
+    //     },
+    //   }
+    //   const result = await cartCollection.updateOne(query, updateDoc, options)
+    //   res.send(result)
+    // })
+
     app.delete('/cart/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
@@ -119,26 +162,47 @@ async function run() {
       const result = await productCollection.insertOne(product)
       res.send(result);
     })
-// ................comment...........................
+    app.put('/updateproduct/:id', async (req, res) => {
+      const id = req.params.id;
+      const product = req.body;
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true };
+      const updatequerie = {
+          $set: {
+              // image: product.image,
+              title: product.title,
+              brand: product.brand,
+              price: product.price,
+              descaption: product.descaption,
+              category: product.category,
+              stockStatus: product.stockStatus,
+              discount: product.discount, 
+          }
+      };
+      const result = await productCollection.updateOne(filter, updatequerie, options);
+      res.send(result);
+  })
 
-// ....................................................
-app.get('/comment', async (req, res) => {
-  const result = await commentCollection.find().toArray();
-  res.send(result)
-})
-app.post('/comment', async (req, res) => {
-  const querie = req.body;
-  const result = await commentCollection.insertOne(querie)
-  res.send(result);
-})
+    // ................comment...........................
 
-app.delete('/comment/:id', async (req, res) => {
-  const id = req.params.id;
-  const query = { _id: new ObjectId(id) }
-  const result = await commentCollection.deleteOne(query)
-  res.send(result);
- 
-})
+    // ....................................................
+    app.get('/comment', async (req, res) => {
+      const result = await commentCollection.find().toArray();
+      res.send(result)
+    })
+    app.post('/comment', async (req, res) => {
+      const querie = req.body;
+      const result = await commentCollection.insertOne(querie)
+      res.send(result);
+    })
+
+    app.delete('/comment/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await commentCollection.deleteOne(query)
+      res.send(result);
+
+    })
 
 
     // ...............................users...................................
