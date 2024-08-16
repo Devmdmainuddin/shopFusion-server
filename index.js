@@ -87,15 +87,18 @@ async function run() {
     })
     //..............................cart...........................
     app.get('/cart', async (req, res) => {
-      // const email = req.params.email
       let query = {};
-
       if (req.query?.email) {
         query = { "email": req.query.email }
-
       }
       const result = await cartCollection.find(query).toArray();
-      // const result = await cartCollection.findOne({ email })
+      res.send(result)
+    })
+
+    app.get('/cart/:email', async (req, res) => {
+      const email = req.params.email
+      let query = { 'email': email };
+      const result = await cartCollection.find(query).toArray();
       res.send(result)
     })
 
@@ -105,38 +108,47 @@ async function run() {
     //   res.send(result)
     // })
 
-    app.post('/cart', async (req, res) => {
-      const cartItem = req.body
-      const result = await cartCollection.insertOne(cartItem)
-      res.send(result);
-    })
-    // app.put('/cart', async (req, res) => {
+    // app.post('/cart', async (req, res) => {
     //   const cartItem = req.body
-    //   const query = { produdctId: cartItem?.produdctId }
-    //   const isExist = await cartCollection.findOne(query)
-    //   if (isExist) {
-    //     if (cartItem.itemQuantity >1 ) {
-    //     //  const updateQuantity= itemQuantity +1
-    //       const result = await cartCollection.updateOne(query, {
-    //         $set: { itemQuantity:  itemQuantity + parseInt(cartItem.itemQuantity) },
-    //       })
-    //       return res.send(result)
-    //     } else {
-    //       return res.send(isExist)
-    //     }
-    //   }
-
-    //   const options = { upsert: true }
-
-    //   const updateDoc = {
-    //     $set: {
-    //       ...cartItem,
-    //       Timestamp: Date.now(),
-    //     },
-    //   }
-    //   const result = await cartCollection.updateOne(query, updateDoc, options)
-    //   res.send(result)
+    //   const result = await cartCollection.insertOne(cartItem)
+    //   res.send(result);
     // })
+
+    app.put('/cart', async (req, res) => {
+      const cartItem = req.body;
+
+      const query = { produdctId: cartItem?.produdctId }; // Corrected typo in "produdctId"
+      const isExist = await cartCollection.findOne(query);
+      const percentage = (parseFloat(cartItem.price) * parseFloat(cartItem.discount)) / 100;
+      const discountPrice = parseFloat(cartItem.price) - percentage;
+      
+      
+      if (isExist) {
+        // Update the quantity if the item already exists
+        const newQuantity = isExist.itemQuantity + parseInt(cartItem.itemQuantity);
+        const newPrice = isExist.price + discountPrice
+        const pricedd= newPrice * cartItem.itemQuantity
+        const result = await cartCollection.updateOne(query, {
+          $set: {
+            itemQuantity: newQuantity,
+            price: pricedd,
+          },
+        });
+        return res.send(result);
+      }
+      // If the item doesn't exist, add it to the cart
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          ...cartItem,
+          itemQuantity: parseInt(cartItem.itemQuantity),
+          price: parseInt(discountPrice) * cartItem.itemQuantity, // Ensure itemQuantity is an integer
+          Timestamp: Date.now(),
+        },
+      };
+      const result = await cartCollection.updateOne(query, updateDoc, options);
+      res.send(result);
+    });
 
     app.delete('/cart/:id', async (req, res) => {
       const id = req.params.id;
@@ -168,20 +180,20 @@ async function run() {
       const filter = { _id: new ObjectId(id) }
       const options = { upsert: true };
       const updatequerie = {
-          $set: {
-              // image: product.image,
-              title: product.title,
-              brand: product.brand,
-              price: product.price,
-              descaption: product.descaption,
-              category: product.category,
-              stockStatus: product.stockStatus,
-              discount: product.discount, 
-          }
+        $set: {
+          // image: product.image,
+          title: product.title,
+          brand: product.brand,
+          price: product.price,
+          descaption: product.descaption,
+          category: product.category,
+          stockStatus: product.stockStatus,
+          discount: product.discount,
+        }
       };
       const result = await productCollection.updateOne(filter, updatequerie, options);
       res.send(result);
-  })
+    })
 
     // ................comment...........................
 
