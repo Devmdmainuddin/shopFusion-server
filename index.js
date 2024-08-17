@@ -73,11 +73,47 @@ async function run() {
       res.send(result)
     })
 
-    app.post('/wishlist', async (req, res) => {
-      const cartItem = req.body;
-      const result = await wishlistCollection.insertOne(cartItem)
+    // app.post('/wishlist', async (req, res) => {
+    //   const cartItem = req.body;
+    //   const result = await wishlistCollection.insertOne(cartItem)
+    //   res.send(result);
+    // })
+    app.put('/wishlist', async (req, res) => {
+      const wishlistItem = req.body;
+      const query = { produdctId: wishlistItem?.produdctId }; // Corrected typo in "produdctId"
+      const isExist = await wishlistCollection.findOne(query);
+      const discount = wishlistItem.discount ? parseFloat(wishlistItem.discount) : 0;
+      const percentage = (parseFloat(wishlistItem.price) * discount) / 100;
+      const discountPrice = parseFloat(wishlistItem.price) - percentage;
+      
+      
+      if (isExist) {
+        // Update the quantity if the item already exists
+        const newQuantity = isExist.itemQuantity + parseInt(wishlistItem.itemQuantity);
+        const newPrice = isExist.price + discountPrice
+        const pricedd= newPrice * wishlistItem.itemQuantity
+        const result = await wishlistCollection.updateOne(query, {
+          $set: {
+            itemQuantity: newQuantity,
+            price: pricedd,
+          },
+        });
+        return res.send(result);
+      }
+      // If the item doesn't exist, add it to the cart
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          ...wishlistItem,
+          itemQuantity: parseInt(wishlistItem.itemQuantity),
+          price: parseInt(discountPrice) * wishlistItem.itemQuantity, // Ensure itemQuantity is an integer
+          Timestamp: Date.now(),
+        },
+      };
+      const result = await wishlistCollection.updateOne(query, updateDoc, options);
       res.send(result);
-    })
+    });
+
     app.delete('/wishlist/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
@@ -116,12 +152,11 @@ async function run() {
 
     app.put('/cart', async (req, res) => {
       const cartItem = req.body;
-
       const query = { produdctId: cartItem?.produdctId }; // Corrected typo in "produdctId"
       const isExist = await cartCollection.findOne(query);
-      const percentage = (parseFloat(cartItem.price) * parseFloat(cartItem.discount)) / 100;
+      const discount = cartItem.discount ? parseFloat(cartItem.discount) : 0;
+      const percentage = (parseFloat(cartItem.price) * discount) / 100;
       const discountPrice = parseFloat(cartItem.price) - percentage;
-      
       
       if (isExist) {
         // Update the quantity if the item already exists
@@ -159,10 +194,40 @@ async function run() {
     })
 
     // .............................product.............................
+    // app.get('/product', async (req, res) => {
+    //   const result = await productCollection.find().toArray();
+    //   res.send(result)
+    // })
     app.get('/product', async (req, res) => {
-      const result = await productCollection.find().toArray();
+      const page = parseInt(req.query.page)
+      const size = parseInt(req.query.size)
+      const filter = req.query.filter
+      const sort = req.query.sort
+      const search = req.query.search
+      // console.log('pagination query',req.query)
+
+      let query = {
+        title: { $regex: String(search), $options: 'i' },
+      }
+      // if (filterBand) query.brandName = filterBand
+      if (filter) query.brand = filter
+      let options = {}
+      if (sort) options = { sort: { createAt: sort === 'asc' ? 1 : -1 } }
+      const result = await productCollection.find(query, options).skip(page * size).limit(size).toArray();
       res.send(result)
-    })
+  })
+  app.get('/productCount', async (req, res) => {
+    const filter = req.query.filter
+    const search = req.query.search
+    let query = {
+      title: { $regex: String(search), $options: 'i' },
+    }
+    if (filter) query.brand = filter
+    // const count = await shopSwiftlyproduct.estimatedDocumentCount(query);
+    const count = await productCollection.countDocuments(query);
+    res.send({ count })
+})
+  
     app.get('/product/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
