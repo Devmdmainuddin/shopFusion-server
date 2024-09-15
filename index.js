@@ -36,9 +36,10 @@ async function run() {
     const productCollection = client.db("shopFusion").collection("product")
     const userCollection = client.db("shopFusion").collection("users")
     const wishlistCollection = client.db("shopFusion").collection("wishlist")
+    const checkoutCollection = client.db("shopFusion").collection("checkout")
     const cartCollection = client.db("shopFusion").collection("cart")
     const commentCollection = client.db("shopFusion").collection("comment")
-
+    const paymentCollection  = client.db("shopFusion").collection("payment")
     // auth related api
     app.post('/jwt', async (req, res) => {
       const user = req.body;
@@ -52,21 +53,21 @@ async function run() {
     })
     // middlewares 
 
-    // const verifyToken = (req, res, next) => {
-    //   if (!req.headers.authorization) {
-    //     return res.status(401).send({ message: 'unauthorized access,1' });
-    //   }
-    //   const data = req.headers.authorization.split(' ');
-    //   const token = data[1]
-    //   jwt.verify(token, process.env.ACCRSS_TOKEN_SECRET, (err, decoded) => {
-    //     if (err) {
-    //       return res.status(401).send({ message: 'unauthorized access ,2' })
-    //     }
-    //     req.decoded = decoded;
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'unauthorized access,1' });
+      }
+      const data = req.headers.authorization.split(' ');
+      const token = data[1]
+      jwt.verify(token, process.env.ACCRSS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: 'unauthorized access ,2' })
+        }
+        req.decoded = decoded;
 
-    //     next();
-    //   })
-    // }
+        next();
+      })
+    }
     // ..........................wishlist......................
     app.get('/wishlist', async (req, res) => {
       const result = await wishlistCollection.find().toArray();
@@ -85,7 +86,7 @@ async function run() {
       const discount = wishlistItem.discount ? parseFloat(wishlistItem.discount) : 0;
       const percentage = (parseFloat(wishlistItem.price) * discount) / 100;
       const discountPrice = parseFloat(wishlistItem.price) - percentage;
-      
+   
       
       if (isExist) {
         // Update the quantity if the item already exists
@@ -194,10 +195,10 @@ async function run() {
     })
 
     // .............................product.............................
-    // app.get('/product', async (req, res) => {
-    //   const result = await productCollection.find().toArray();
-    //   res.send(result)
-    // })
+    app.get('/products', async (req, res) => {
+      const result = await productCollection.find().toArray();
+      res.send(result)
+    })
     app.get('/product', async (req, res) => {
       const page = parseInt(req.query.page)
       const size = parseInt(req.query.size)
@@ -260,10 +261,30 @@ async function run() {
       res.send(result);
     })
 
+    app.delete('/product/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await productCollection.deleteOne(query)
+      res.send(result);
+
+    })
+
+    // ..................................
+    app.post('/checkout', async (req, res) => {
+      const info = req.body;
+      const result = await checkoutCollection.insertOne(info)
+      res.send(result);
+    })
+
+
+
     // ................comment...........................
 
     // ....................................................
     app.get('/comment', async (req, res) => {
+    //   const review = req.body;
+    //  const query = { _id: review.productId }
+    //   console.log(query,review);
       const result = await commentCollection.find().toArray();
       res.send(result)
     })
@@ -364,6 +385,32 @@ async function run() {
       const result = await userCollection.deleteOne(query);
       res.send(result);
     })
+
+// .......................payments..........................
+app.post("/create-payment-intent",verifyToken, async (req, res) => {
+  const { price } = req.body;
+  const amount = parseInt(price * 100)
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amount,
+    currency: "usd",
+    payment_method_types: ['card'],
+
+  });
+
+  res.send({
+    clientSecret: paymentIntent.client_secret,
+  });
+});
+
+app.post('/payments',verifyToken, async (req, res) => {
+  const payment = req.body
+  const result = await paymentCollection.insertOne(payment)
+
+  res.send({ result })
+})
+
+
+
 
 
     // await client.db("admin").command({ ping: 1 });
