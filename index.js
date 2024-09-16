@@ -247,14 +247,20 @@ async function run() {
       const options = { upsert: true };
       const updatequerie = {
         $set: {
-          // image: product.image,
-          title: product.title,
-          brand: product.brand,
-          price: product.price,
-          descaption: product.descaption,
-          category: product.category,
-          stockStatus: product.stockStatus,
-          discount: product.discount,
+          title:product.title ,
+            brand:product.brand,
+            price:product.price,
+            descaption:product.descaption,
+            category:product.category,
+            update:product.update,
+            availability_status:product.availability_status,
+            minimum_order_quantity:product.minimum_order_quantity,
+            return_policy:product.return_policy,
+          
+            stock_levels:product.stock_levels,
+           
+            discount:product.discount,
+            dimensions:product.dimensions,
         }
       };
       const result = await productCollection.updateOne(filter, updatequerie, options);
