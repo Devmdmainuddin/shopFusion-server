@@ -39,7 +39,7 @@ async function run() {
     const checkoutCollection = client.db("shopFusion").collection("checkout")
     const cartCollection = client.db("shopFusion").collection("cart")
     const commentCollection = client.db("shopFusion").collection("comment")
-    const paymentCollection  = client.db("shopFusion").collection("payment")
+    const paymentCollection = client.db("shopFusion").collection("payment")
     // auth related api
     app.post('/jwt', async (req, res) => {
       const user = req.body;
@@ -86,13 +86,13 @@ async function run() {
       const discount = wishlistItem.discount ? parseFloat(wishlistItem.discount) : 0;
       const percentage = (parseFloat(wishlistItem.price) * discount) / 100;
       const discountPrice = parseFloat(wishlistItem.price) - percentage;
-   
-      
+
+
       if (isExist) {
         // Update the quantity if the item already exists
         const newQuantity = isExist.itemQuantity + parseInt(wishlistItem.itemQuantity);
         const newPrice = isExist.price + discountPrice
-        const pricedd= newPrice * wishlistItem.itemQuantity
+        const pricedd = newPrice * wishlistItem.itemQuantity
         const result = await wishlistCollection.updateOne(query, {
           $set: {
             itemQuantity: newQuantity,
@@ -158,12 +158,12 @@ async function run() {
       const discount = cartItem.discount ? parseFloat(cartItem.discount) : 0;
       const percentage = (parseFloat(cartItem.price) * discount) / 100;
       const discountPrice = parseFloat(cartItem.price) - percentage;
-      
+
       if (isExist) {
         // Update the quantity if the item already exists
         const newQuantity = isExist.itemQuantity + parseInt(cartItem.itemQuantity);
         const newPrice = isExist.price + discountPrice
-        const pricedd= newPrice * cartItem.itemQuantity
+        const pricedd = newPrice * cartItem.itemQuantity
         const result = await cartCollection.updateOne(query, {
           $set: {
             itemQuantity: newQuantity,
@@ -216,19 +216,19 @@ async function run() {
       if (sort) options = { sort: { createAt: sort === 'asc' ? 1 : -1 } }
       const result = await productCollection.find(query, options).skip(page * size).limit(size).toArray();
       res.send(result)
-  })
-  app.get('/productCount', async (req, res) => {
-    const filter = req.query.filter
-    const search = req.query.search
-    let query = {
-      title: { $regex: String(search), $options: 'i' },
-    }
-    if (filter) query.brand = filter
-    // const count = await shopSwiftlyproduct.estimatedDocumentCount(query);
-    const count = await productCollection.countDocuments(query);
-    res.send({ count })
-})
-  
+    })
+    app.get('/productCount', async (req, res) => {
+      const filter = req.query.filter
+      const search = req.query.search
+      let query = {
+        title: { $regex: String(search), $options: 'i' },
+      }
+      if (filter) query.brand = filter
+      // const count = await shopSwiftlyproduct.estimatedDocumentCount(query);
+      const count = await productCollection.countDocuments(query);
+      res.send({ count })
+    })
+
     app.get('/product/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
@@ -240,27 +240,25 @@ async function run() {
       const result = await productCollection.insertOne(product)
       res.send(result);
     })
-    app.put('/updateproduct/:id', async (req, res) => {
+    app.put('/updateproducts/:id', async (req, res) => {
       const id = req.params.id;
       const product = req.body;
       const filter = { _id: new ObjectId(id) }
       const options = { upsert: true };
       const updatequerie = {
         $set: {
-          title:product.title ,
-            brand:product.brand,
-            price:product.price,
-            descaption:product.descaption,
-            category:product.category,
-            update:product.update,
-            availability_status:product.availability_status,
-            minimum_order_quantity:product.minimum_order_quantity,
-            return_policy:product.return_policy,
-          
-            stock_levels:product.stock_levels,
-           
-            discount:product.discount,
-            dimensions:product.dimensions,
+          title: product.title,
+          brand: product.brand,
+          price: product.price,
+          descaption: product.descaption,
+          category: product.category,
+          update: product.update,
+          availability_status: product.availability_status,
+          minimum_order_quantity: product.minimum_order_quantity,
+          return_policy: product.return_policy,
+          stock_levels: product.stock_levels,
+          discount: product.discount,
+          dimensions: product.dimensions,
         }
       };
       const result = await productCollection.updateOne(filter, updatequerie, options);
@@ -288,9 +286,9 @@ async function run() {
 
     // ....................................................
     app.get('/comment', async (req, res) => {
-    //   const review = req.body;
-    //  const query = { _id: review.productId }
-    //   console.log(query,review);
+      //   const review = req.body;
+      //  const query = { _id: review.productId }
+      //   console.log(query,review);
       const result = await commentCollection.find().toArray();
       res.send(result)
     })
@@ -392,28 +390,28 @@ async function run() {
       res.send(result);
     })
 
-// .......................payments..........................
-app.post("/create-payment-intent",verifyToken, async (req, res) => {
-  const { price } = req.body;
-  const amount = parseInt(price * 100)
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: amount,
-    currency: "usd",
-    payment_method_types: ['card'],
+    // .......................payments..........................
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100)
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ['card'],
 
-  });
+      });
 
-  res.send({
-    clientSecret: paymentIntent.client_secret,
-  });
-});
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
 
-app.post('/payments',verifyToken, async (req, res) => {
-  const payment = req.body
-  const result = await paymentCollection.insertOne(payment)
+    app.post('/payments', verifyToken, async (req, res) => {
+      const payment = req.body
+      const result = await paymentCollection.insertOne(payment)
 
-  res.send({ result })
-})
+      res.send({ result })
+    })
 
 
 
