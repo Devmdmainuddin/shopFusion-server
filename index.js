@@ -286,9 +286,7 @@ async function run() {
 
     // ....................................................
     app.get('/reviews', async (req, res) => {
-      //   const review = req.body;
-      //  const query = { _id: review.productId }
-      //   console.log(query,review);
+     
       const result = await reviewsCollection.find().toArray();
       res.send(result)
     })
