@@ -276,6 +276,11 @@ async function run() {
     })
 
     // ..................................
+    app.get('/checkout', async (req, res) => {
+      const result = await checkoutCollection.find().toArray();
+      res.send(result)
+
+    })
     app.post('/checkout', async (req, res) => {
       const info = req.body;
       const result = await checkoutCollection.insertOne(info)
@@ -427,7 +432,7 @@ async function run() {
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
-    // Ensures that the client will close when you finish/error
+ 
     // await client.close();
   }
 }
