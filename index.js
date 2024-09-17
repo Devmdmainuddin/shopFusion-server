@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const app = express()
 const port = process.env.PORT || 5000
-
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 app.use(cors({
   origin: [
@@ -403,30 +403,31 @@ async function run() {
     })
 
     // .......................payments..........................
+    
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
-      
+    
       if (!price) {
         return res.status(400).send({ error: "Price is required" });
       }
     
       const amount = parseInt(price * 100); // Convert price to cents
+    
       try {
         const paymentIntent = await stripe.paymentIntents.create({
           amount: amount,
           currency: "usd",
           payment_method_types: ['card'],
         });
-    
-        res.send({
-          clientSecret: paymentIntent.client_secret,
-        });
+        res.send({ clientSecret: paymentIntent.client_secret });
       } catch (error) {
+        console.error("Stripe error:", error.message);  // Log error to console
         res.status(500).send({ error: error.message });
       }
     });
 
-    app.post('/payments', verifyToken, async (req, res) => {
+
+    app.post('/payments', async (req, res) => {
       const payment = req.body
       const result = await paymentCollection.insertOne(payment)
 
