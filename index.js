@@ -38,7 +38,7 @@ async function run() {
     const wishlistCollection = client.db("shopFusion").collection("wishlist")
     const checkoutCollection = client.db("shopFusion").collection("checkout")
     const cartCollection = client.db("shopFusion").collection("cart")
-    const commentCollection = client.db("shopFusion").collection("comment")
+    const reviewsCollection = client.db("shopFusion").collection("reviews")
     const paymentCollection = client.db("shopFusion").collection("payment")
     // auth related api
     app.post('/jwt', async (req, res) => {
@@ -285,23 +285,23 @@ async function run() {
     // ................comment...........................
 
     // ....................................................
-    app.get('/comment', async (req, res) => {
+    app.get('/reviews', async (req, res) => {
       //   const review = req.body;
       //  const query = { _id: review.productId }
       //   console.log(query,review);
-      const result = await commentCollection.find().toArray();
+      const result = await reviewsCollection.find().toArray();
       res.send(result)
     })
-    app.post('/comment', async (req, res) => {
+    app.post('/reviews', async (req, res) => {
       const querie = req.body;
-      const result = await commentCollection.insertOne(querie)
+      const result = await reviewsCollection.insertOne(querie)
       res.send(result);
     })
 
-    app.delete('/comment/:id', async (req, res) => {
+    app.delete('/reviews/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
-      const result = await commentCollection.deleteOne(query)
+      const result = await reviewsCollection.deleteOne(query)
       res.send(result);
 
     })
