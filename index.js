@@ -292,6 +292,13 @@ async function run() {
       const result = await reviewsCollection.find().toArray();
       res.send(result)
     })
+    app.get('/reviews/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { 'productId': id }
+      const result = await reviewsCollection.find(query).sort({ reviewDate: -1 }).toArray()
+      res.send(result)
+    })
+
     app.post('/reviews', async (req, res) => {
       const querie = req.body;
       const result = await reviewsCollection.insertOne(querie)
