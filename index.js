@@ -403,19 +403,27 @@ async function run() {
     })
 
     // .......................payments..........................
-    app.post("/create-payment-intent", verifyToken, async (req, res) => {
+    app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
-      const amount = parseInt(price * 100)
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount,
-        currency: "usd",
-        payment_method_types: ['card'],
-
-      });
-
-      res.send({
-        clientSecret: paymentIntent.client_secret,
-      });
+      
+      if (!price) {
+        return res.status(400).send({ error: "Price is required" });
+      }
+    
+      const amount = parseInt(price * 100); // Convert price to cents
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          payment_method_types: ['card'],
+        });
+    
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (error) {
+        res.status(500).send({ error: error.message });
+      }
     });
 
     app.post('/payments', verifyToken, async (req, res) => {
