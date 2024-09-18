@@ -336,10 +336,21 @@ async function run() {
 
     // ..................................
     app.get('/checkout', async (req, res) => {
-      const result = await checkoutCollection.find().toArray();
-      res.send(result)
+      const userEmail = req.query.email; // Assuming the email is passed as a query parameter
+      try {
+        const result = await checkoutCollection.find({ email: userEmail }).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "An error occurred while fetching checkout data" });
+      }
+    });
+    
+    // app.get('/checkout', async (req, res) => {
+    //   const result = await checkoutCollection.find().toArray();
+    //   res.send(result)
 
-    })
+    // })
+
     app.post('/checkout', async (req, res) => {
       const info = req.body;
       const result = await checkoutCollection.insertOne(info)
@@ -535,11 +546,71 @@ app.get('/admin-stats',async(req,res)=>{
   res.send({users,product,orders,revenue})
 })
 
-
-
 // .........................................
+app.get('/payment-stats', async(req, res) =>{
+  const result = await paymentCollection.aggregate([
+    {
+      $unwind: '$cartIds'
+    },
+  {
+    $addFields: {
+      cartIds: { $toObjectId: "$cartIds" }
+    }
+  },
+    {
+      $lookup: {
+        from: 'product',
+        localField: 'cartIds',
+        foreignField: '_id',
+        as: 'cartitems'
+      }
+    },
+    {
+      $unwind:'$cartitems'
+    },
+    
+    {
+      $addFields: {
+        "cartitems.price": {
+          $cond: {
+            if: { $isNumber: "$cartitems.price" },
+            then: "$cartitems.price",
+            else: { $toDouble: "$cartitems.price" }
+          }
+        }
+      }
+    },
+    {
+      $group: {
+        _id: '$cartitems.SubjectCategorey',
+        quantity:{ $sum: 1 },
+        Revenue:{
+          $sum:{
+            $add:[
+              '$cartitems.TuitionFees',
+              '$cartitems.ServiceCharge',
+              '$cartitems.TuitionFees'
+            ]
+          }
+        }  
+      }
+    },   
+ 
+  {
+    $project: {
+      _id: 0,
+      category: "$_id",
+      quantity:'$quantity',
+      Revenue: '$Revenue'
+    }
+  }
+  ]).toArray();
 
+  res.send(result);
 
+})
+
+// ........................................
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
