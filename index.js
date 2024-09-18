@@ -513,8 +513,31 @@ async function run() {
       res.send({ result })
     })
 
+// .........................................
+app.get('/admin-stats',async(req,res)=>{
+  const users = await userCollection.estimatedDocumentCount();
+  const product = await productCollection.estimatedDocumentCount();
+  const orders = await paymentCollection.estimatedDocumentCount();
+  const result = await paymentCollection.aggregate([
+    {
+      $group:{
+        _id: null,
+        totalRevenue:{
+          $sum:'$price'
+        }
+        // totalRevenue:{
+        //   $sum:'$price'
+        // }
+      }
+    }
+  ]).toArray()
+  const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+  res.send({users,product,orders,revenue})
+})
 
 
+
+// .........................................
 
 
     // await client.db("admin").command({ ping: 1 });
