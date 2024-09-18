@@ -134,18 +134,47 @@ async function run() {
       res.send(result)
     })
 
+    // Get cart items by userId
     app.get('/cart/:email', async (req, res) => {
       const email = req.params.email
       let query = { 'email': email };
-      const result = await cartCollection.find(query).toArray();
-      res.send(result)
-    })
+      try {
+        const result = await cartCollection.find(query).toArray();
+        res.send(result ? result.items : [])
+      } catch (error) {
+        res.status(500)({ message: error.message });
+      }
+    });
 
-    // app.get('/user/:email', async (req, res) => {
-    //   const email = req.params.email
-    //   const result = await userCollection.findOne({ email })
-    //   res.send(result)
-    // })
+   
+    // Add item to cart
+    app.post('/cart', async (req, res) => {
+      const cartItem = req.body;
+      const query = { productId: cartItem?.productId };
+
+      try {
+        let findProduct = await cartCollection.findOne(query);
+
+        if (!findProduct) {
+          // If no product exists, create a new entry
+          findProduct = { items: [cartItem] };
+          await cartCollection.insertOne(findProduct);
+        } else {
+          // If product exists, check if item is already in the cart
+          const itemIndex = findProduct.items.findIndex(item => item.productId === cartItem?.productId);
+          if (itemIndex !== -1) {
+            findProduct.items[itemIndex].qun += cartItem?.qun ? cartItem?.qun : 1;
+          } else {
+            findProduct.items.push(cartItem);
+          }
+          await cartCollection.updateOne(query, { $set: { items: findProduct.items } });
+        }
+
+        res.status(200).json({ message: 'Cart updated successfully' });
+      } catch (error) {
+        res.status(500).json({ message: error.message });
+      }
+    });
 
     // app.post('/cart', async (req, res) => {
     //   const cartItem = req.body
@@ -155,39 +184,55 @@ async function run() {
 
     app.put('/cart', async (req, res) => {
       const cartItem = req.body;
-      const query = { produdctId: cartItem?.produdctId }; // Corrected typo in "produdctId"
-      const isExist = await cartCollection.findOne(query);
-      const discount = cartItem.discount ? parseFloat(cartItem.discount) : 0;
-      const percentage = (parseFloat(cartItem.price) * discount) / 100;
-      const discountPrice = parseFloat(cartItem.price) - percentage;
-
-      if (isExist) {
-        // Update the quantity if the item already exists
-        const newQuantity = isExist.itemQuantity + parseInt(cartItem.itemQuantity);
-        const newPrice = isExist.price + discountPrice
-        const pricedd = newPrice * cartItem.itemQuantity
-        const result = await cartCollection.updateOne(query, {
-          $set: {
-            itemQuantity: newQuantity,
-            price: pricedd,
-          },
-        });
-        return res.send(result);
+      const query = { productId: cartItem?.productId }; // Corrected the typo
+  
+      try {
+          // Check if the item exists in the cart
+          const isExist = await cartCollection.findOne(query);
+  
+          // Calculate discount and final price
+          const discount = cartItem.discount ? parseFloat(cartItem.discount) : 0;
+          const percentage = (parseFloat(cartItem.price) * discount) / 100;
+          const discountPrice = parseFloat(cartItem.price) - percentage;
+  
+          if (isExist) {
+              // Update the quantity and price if the item already exists
+              const newQuantity = isExist.itemQuantity + parseInt(cartItem.itemQuantity);
+              const newPrice = isExist.price + discountPrice;
+              const totalPrice = newPrice * cartItem.itemQuantity;
+  
+              // Update existing item in the cart
+              const result = await cartCollection.updateOne(query, {
+                  $set: {
+                      itemQuantity: newQuantity,
+                      price: totalPrice, // Updated price calculation based on quantity
+                  },
+              });
+  
+              return res.send(result);
+          } else {
+              // If the item doesn't exist, add it to the cart
+              const options = { upsert: true };
+              const updateDoc = {
+                  $set: {
+                      ...cartItem,
+                      itemQuantity: parseInt(cartItem.itemQuantity),
+                      price: discountPrice * cartItem.itemQuantity, // Ensure price is calculated correctly
+                      Timestamp: Date.now(),
+                  },
+              };
+  
+              // Insert the new item or update if it doesn't exist
+              const result = await cartCollection.updateOne(query, updateDoc, options);
+              res.status(200).json({ message: 'Item added to the cart', result });
+             
+          }
+      } catch (error) {
+          res.status(500).json({ message: error.message });
       }
-      // If the item doesn't exist, add it to the cart
-      const options = { upsert: true };
-      const updateDoc = {
-        $set: {
-          ...cartItem,
-          itemQuantity: parseInt(cartItem.itemQuantity),
-          price: parseInt(discountPrice) * cartItem.itemQuantity, // Ensure itemQuantity is an integer
-          Timestamp: Date.now(),
-        },
-      };
-      const result = await cartCollection.updateOne(query, updateDoc, options);
-      res.send(result);
-    });
-
+  });
+  
+    // delete one cart
     app.delete('/cart/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
@@ -195,6 +240,20 @@ async function run() {
       res.send(result);
 
     })
+    // delete all cart
+    app.delete('/cart', async (req, res) => {
+      try {
+        const result = await cartCollection.deleteMany({});
+        res.send({
+          message: 'All carts deleted successfully',
+          deletedCount: result.deletedCount
+        });
+      } catch (error) {
+        console.error('Error deleting all carts:', error);
+        res.status(500).send({ error: 'Failed to delete carts' });
+      }
+    });
+
 
     // .............................product.............................
     app.get('/products', async (req, res) => {
@@ -286,14 +345,34 @@ async function run() {
       const result = await checkoutCollection.insertOne(info)
       res.send(result);
     })
+    //  delete one by one
+    app.delete('/checkout/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await checkoutCollection.deleteOne(query)
+      res.send(result);
 
+    })
+    //  delete all data in one query
+    app.delete('/checkout', async (req, res) => {
+      try {
+        const result = await checkoutCollection.deleteMany({});
+        res.send({
+          message: 'All checkouts deleted successfully',
+          deletedCount: result.deletedCount
+        });
+      } catch (error) {
+        console.error('Error deleting all checkouts:', error);
+        res.status(500).send({ error: 'Failed to delete checkouts' });
+      }
+    });
 
 
     // ................comment...........................
 
     // ....................................................
     app.get('/reviews', async (req, res) => {
-     
+
       const result = await reviewsCollection.find().toArray();
       res.send(result)
     })
@@ -403,16 +482,16 @@ async function run() {
     })
 
     // .......................payments..........................
-    
+
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
-    
+
       if (!price) {
         return res.status(400).send({ error: "Price is required" });
       }
-    
+
       const amount = parseInt(price * 100); // Convert price to cents
-    
+
       try {
         const paymentIntent = await stripe.paymentIntents.create({
           amount: amount,
@@ -441,7 +520,7 @@ async function run() {
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
- 
+
     // await client.close();
   }
 }
